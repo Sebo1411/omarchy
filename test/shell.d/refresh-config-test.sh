@@ -39,6 +39,17 @@ grep -Fq 'Not a shipped user config: hypr/missing.lua' "$tmpdir/err" ||
 
 pass "refresh-config validates against OMARCHY_PATH/config"
 
+# Test copy failure returns non-zero status
+mkdir -p "$home/.config/readonly" "$omarchy_path/config/readonly"
+echo "data" >"$omarchy_path/config/readonly/file.conf"
+chmod 555 "$home/.config/readonly"
+if HOME="$home" OMARCHY_PATH="$omarchy_path" "$ROOT/bin/omarchy-refresh-config" readonly/file.conf >/dev/null 2>&1; then
+  chmod 755 "$home/.config/readonly"
+  fail "refresh-config fails when target cannot be written"
+fi
+chmod 755 "$home/.config/readonly"
+pass "refresh-config propagates copy failures"
+
 # shell.json permissions test (0600 on created file and backup)
 mkdir -p "$home/.config/omarchy" "$omarchy_path/config/omarchy"
 echo '{"version":1,"fresh":true}' >"$omarchy_path/config/omarchy/shell.json"

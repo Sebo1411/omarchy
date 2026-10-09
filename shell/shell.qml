@@ -110,6 +110,13 @@ ShellRoot {
     applyShellConfig()
   }
 
+  Timer {
+    id: secureUserConfigTimer
+    interval: 50
+    repeat: false
+    onTriggered: shell.secureUserConfigFile()
+  }
+
   function secureUserConfigFile() {
     Quickshell.execDetached(["bash", "-c", "[[ -f \"$0\" ]] && chmod 0600 \"$0\" || true", shell.userConfigPath])
   }
@@ -120,6 +127,7 @@ ShellRoot {
     shellConfig = payload
     userConfigFile.setText(JSON.stringify(payload, null, 2) + "\n")
     secureUserConfigFile()
+    secureUserConfigTimer.restart()
   }
 
   readonly property var barConfig: shellConfig && Util.isPlainObject(shellConfig.bar) ? shellConfig.bar : builtinShellConfig.bar
@@ -151,7 +159,10 @@ ShellRoot {
       shell.applyShellConfig()
     }
     onLoadFailed: function(error) { shell.applyShellConfig() }
-    onFileChanged: reload()
+    onFileChanged: {
+      shell.secureUserConfigFile()
+      reload()
+    }
   }
 
   Component.onCompleted: {
