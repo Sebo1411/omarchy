@@ -41,3 +41,10 @@ if [[ -f $user_config_file ]]; then
 else
   cp -f "$default_config_file" "$user_config_file"
 fi
+
+if [[ $user_config_file == "${HOME}/.config/omarchy/shell.json" ]]; then
+  chmod 0600 "$user_config_file"
+  if [[ -f ${backup_config_file:-} ]]; then
+    chmod 0600 "$backup_config_file"
+  fi
+fi
