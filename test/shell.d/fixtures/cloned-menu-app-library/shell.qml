@@ -50,14 +50,13 @@ ShellRoot {
 
     delegate: QtObject {
       id: panelEntry
-      required property string pluginId
-      required property string entryKind
-      required property var manifest
+      required property var modelData
 
       Component.onCompleted: {
-        var isSequence = !Array.isArray(panelEntry.manifest.kinds)
-        var hasKind = shell.manifestHasKind(panelEntry.manifest, "menu")
-        var scopedShell = shell.createScopedPluginShell(panelEntry.manifest)
+        var manifest = modelData.manifest
+        var isSequence = !Array.isArray(manifest.kinds)
+        var hasKind = shell.manifestHasKind(manifest, "menu")
+        var scopedShell = shell.createScopedPluginShell(manifest)
         var hasAppLibrary = scopedShell && scopedShell.appLibrary !== null
 
         shell.writeResult({
