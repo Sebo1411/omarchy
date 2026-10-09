@@ -66,6 +66,8 @@ if ! command -v quickshell >/dev/null 2>&1; then
   exit 0
 fi
 
+require_compositor "shell.json permission test"
+
 qs_home="$tmpdir/qs-home"
 qs_config="$tmpdir/qs-config"
 qs_result="$tmpdir/qs-result.json"
