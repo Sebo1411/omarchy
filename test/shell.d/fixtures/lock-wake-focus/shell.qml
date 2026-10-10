@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Wayland
 import qs.Commons
 
 ShellRoot {
@@ -32,19 +33,35 @@ ShellRoot {
     }
   }
 
-  Item {
-    id: host
+  PanelWindow {
+    id: window
     width: 800
     height: 600
+    color: "transparent"
+    WlrLayershell.namespace: "omarchy-lock-test"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    exclusionMode: ExclusionMode.Ignore
 
     Item {
-      id: decoyFocusItem
-      focus: true
+      id: host
+      anchors.fill: parent
+
+      TextInput {
+        id: decoyFocusItem
+        text: "decoy"
+      }
     }
   }
 
   Timer {
-    interval: 10
+    id: stepTimer
+    interval: 50
+    repeat: false
+  }
+
+  Timer {
+    interval: 50
     running: true
     repeat: false
     onTriggered: {
@@ -57,11 +74,10 @@ ShellRoot {
         }
 
         var view = component.createObject(host, {
-          width: 800,
-          height: 600,
+          anchors: { fill: host },
           loadBackground: false,
           inputEnabled: true,
-          displaysBlank: true
+          displaysBlank: false
         })
         if (!view) {
           root.fail("LockView failed to instantiate: " + component.errorString())
@@ -69,24 +85,50 @@ ShellRoot {
           return
         }
 
-        // Steal focus away from view
-        decoyFocusItem.forceActiveFocus()
-        root.assertTrue(!view.passwordActiveFocus, "password input loses focus when decoy item grabs it")
-
-        // Now simulate wake/unblank
-        view.displaysBlank = false
-
-        // Allow Qt.callLater to execute
-        Qt.callLater(function() {
+        // Wait for initial startup focus to settle
+        stepTimer.triggered.connect(function() {
           try {
-            root.assertTrue(view.passwordActiveFocus, "password input re-acquires active focus when displays unblank on wake")
-          } catch (e) {
-            root.fail("assertion failed: " + e)
-          } finally {
+            root.assertTrue(view.passwordActiveFocus, "password input gets initial focus upon load")
+
+            // Give decoy focus and blank the displays
+            view.displaysBlank = true
+            decoyFocusItem.forceActiveFocus()
+            root.assertTrue(!view.passwordActiveFocus, "decoy takes active focus away from password input")
+
+            // Wait a turn with displaysBlank=true, then unblank (wake)
+            stepTimer.triggered.disconnect(arguments.callee)
+            stepTimer.triggered.connect(function() {
+              try {
+                // Wake the displays
+                view.displaysBlank = false
+
+                // In the next turn, check that wake restored password focus
+                stepTimer.triggered.disconnect(arguments.callee)
+                stepTimer.triggered.connect(function() {
+                  try {
+                    root.assertTrue(view.passwordActiveFocus, "password input re-acquires active focus when displays unblank on wake")
+                  } catch (e3) {
+                    root.fail("assertion step 3 failed: " + e3)
+                  } finally {
+                    view.destroy()
+                    root.writeResult()
+                  }
+                })
+                stepTimer.restart()
+              } catch (e2) {
+                root.fail("assertion step 2 failed: " + e2)
+                view.destroy()
+                root.writeResult()
+              }
+            })
+            stepTimer.restart()
+          } catch (e1) {
+            root.fail("assertion step 1 failed: " + e1)
             view.destroy()
             root.writeResult()
           }
         })
+        stepTimer.restart()
       } catch (error) {
         root.fail("lock wake focus fixture threw: " + error)
         root.writeResult()
