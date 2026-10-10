@@ -11,8 +11,6 @@ home="$tmpdir/home"
 stub_bin="$tmpdir/bin"
 mkdir -p "$home" "$stub_bin"
 
-# Stands in for the real mise so a generated wrapper can be run and asked what
-# arguments it passed on.
 cat >"$stub_bin/mise" <<'SH'
 #!/bin/bash
 
@@ -21,6 +19,7 @@ for arg in "$@"; do
   printf '\t%s' "$arg" >>"$OMARCHY_MISE_TEST_LOG"
 done
 printf '\n' >>"$OMARCHY_MISE_TEST_LOG"
+printf 'PATH=%s\n' "$PATH" >>"$OMARCHY_MISE_TEST_LOG"
 SH
 chmod +x "$stub_bin/mise"
 
@@ -36,11 +35,34 @@ install_wrapper npm:playwright playwright >/dev/null
 
 log="$tmpdir/normal.log"
 : >"$log"
-OMARCHY_MISE_TEST_LOG="$log" PATH="$stub_bin:$PATH" "$home/.local/bin/playwright" >/dev/null
+HOME="$home" OMARCHY_MISE_TEST_LOG="$log" \
+  PATH="$home/.local/bin/:$stub_bin:$PATH" "$home/.local/bin/playwright" hello world >/dev/null
 grep -Fqx $'mise\tuse\t-g\t--quiet\tnpm:playwright' "$log" ||
   fail "the wrapper asks mise for the package it was given" "$(cat "$log")"
+grep -Fqx "PATH=$stub_bin:$PATH:$home/.local/bin" "$log" ||
+  fail "the wrapper moves ~/.local/bin (even with trailing slash) to the end of PATH" "$(cat "$log")"
+grep -Fqx $'mise\tx\tnpm:playwright\t--\tplaywright\thello\tworld' "$log" ||
+  fail "the wrapper executes through mise x" "$(cat "$log")"
 
-pass "a normal install writes a wrapper that names its package"
+pass "a normal install writes a wrapper that executes its package through mise x"
+
+log_absent="$tmpdir/absent.log"
+: >"$log_absent"
+HOME="$home" OMARCHY_MISE_TEST_LOG="$log_absent" \
+  PATH="$stub_bin:$PATH:" "$home/.local/bin/playwright" >/dev/null
+grep -Fqx "PATH=$stub_bin:$PATH:" "$log_absent" ||
+  fail "the wrapper leaves PATH (including trailing colon) alone when ~/.local/bin is absent" "$(cat "$log_absent")"
+
+pass "the wrapper leaves PATH alone when ~/.local/bin is absent"
+
+log_empty="$tmpdir/empty.log"
+: >"$log_empty"
+HOME="$home" OMARCHY_MISE_TEST_LOG="$log_empty" \
+  PATH="$stub_bin::$home/.local/bin:" "$home/.local/bin/playwright" >/dev/null
+grep -Fqx "PATH=$stub_bin:::$home/.local/bin" "$log_empty" ||
+  fail "the wrapper preserves empty entries in PATH when moving ~/.local/bin" "$(cat "$log_empty")"
+
+pass "the wrapper preserves empty entries in PATH when moving ~/.local/bin"
 
 # A package name is data. Quoted with %q it reaches mise as one argument
 # instead of being read as shell source when the wrapper runs.

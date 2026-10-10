@@ -48,10 +48,29 @@ esac
 # hold a new version back for days after it ships. Exported rather than set on
 # the install line alone, so resolving the version to execute agrees with the
 # one just installed.
+#
+# Move ~/.local/bin to the end of PATH before calling mise so tools managed by mise
+# (and its runtimes like Node) precede ~/.local/bin, preventing recursive wrapper loops
+# when ~/.local/bin precedes mise tool directories in PATH, while preserving access
+# to user binaries in ~/.local/bin.
 rm -f "$HOME/.local/bin/$command"
 cat >"$HOME/.local/bin/$command" <<EOF
 #!/bin/bash
 export MISE_MINIMUM_RELEASE_AGE=0
+if [[ ":\$PATH:" == *":\$HOME/.local/bin:"* || ":\$PATH:" == *":\$HOME/.local/bin/:"* ]]; then
+  new_path=()
+  rem="\$PATH:"
+  while [[ \$rem == *:* ]]; do
+    dir="\${rem%%:*}"
+    rem="\${rem#*:}"
+    if [[ \$dir != "\$HOME/.local/bin" && \$dir != "\$HOME/.local/bin/" ]]; then
+      new_path+=("\$dir")
+    fi
+  done
+  new_path+=("\$HOME/.local/bin")
+  printf -v PATH '%s:' "\${new_path[@]}"
+  PATH="\${PATH%:}"
+fi
 mise use -g --quiet $package_arg || exit 1
 exec mise x $package_arg -- $bin_arg "\$@"
 EOF
