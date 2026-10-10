@@ -27,8 +27,20 @@ fi
 
 # Change gnome icon theme color
 GNOME_ICONS_THEME=$HOME/.local/state/omarchy/current/theme/icons.theme
+icon_theme="Yaru-blue"
 if [[ -f $GNOME_ICONS_THEME ]]; then
-  gsettings set org.gnome.desktop.interface icon-theme "$(<$GNOME_ICONS_THEME)"
-else
-  gsettings set org.gnome.desktop.interface icon-theme "Yaru-blue"
+  icon_theme=$(<$GNOME_ICONS_THEME)
 fi
+
+icons_dir="${OMARCHY_ICONS_DIR:-/usr/share/icons}"
+if [[ ! -d $icons_dir/$icon_theme && ! -d $HOME/.local/share/icons/$icon_theme && ! -d $HOME/.icons/$icon_theme ]]; then
+  if [[ -d $icons_dir/Yaru || -d $icons_dir/Yaru-dark ]]; then
+    if [[ $mode == "light" ]]; then
+      icon_theme="Yaru"
+    else
+      icon_theme="Yaru-dark"
+    fi
+  fi
+fi
+
+gsettings set org.gnome.desktop.interface icon-theme "$icon_theme"
