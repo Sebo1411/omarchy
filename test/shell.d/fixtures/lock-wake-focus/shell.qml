@@ -74,7 +74,7 @@ ShellRoot {
         }
 
         var view = component.createObject(host, {
-          anchors: { fill: host },
+          "anchors.fill": host,
           loadBackground: false,
           inputEnabled: true,
           displaysBlank: false
