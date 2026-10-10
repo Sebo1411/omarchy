@@ -36,11 +36,12 @@ if [[ $mode != "--services-only" ]]; then
   done
 
   nvidia_proc="${OMARCHY_NVIDIA_PROC_VERSION:-/proc/driver/nvidia/version}"
+  nvidia_sys="${OMARCHY_NVIDIA_SYS_VERSION:-/sys/module/nvidia/version}"
   running_nvidia=""
   if [[ -f $nvidia_proc ]]; then
     running_nvidia=$(sed -nE 's/.*[Kk]ernel [Mm]odule[[:space:]]+([0-9.]+).*/\1/p' "$nvidia_proc" | head -n 1)
-  elif [[ -f /sys/module/nvidia/version ]]; then
-    running_nvidia=$(< /sys/module/nvidia/version)
+  elif [[ -f $nvidia_sys ]]; then
+    running_nvidia=$(< "$nvidia_sys")
   fi
 
   installed_nvidia=""

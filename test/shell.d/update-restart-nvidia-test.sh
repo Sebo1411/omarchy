@@ -57,8 +57,10 @@ SH
 
 chmod +x "$scratch/bin/"*
 
-nvidia_proc="$scratch/nvidia-version"
+nvidia_proc="$scratch/nvidia-proc-version"
+nvidia_sys="$scratch/nvidia-sys-version"
 export OMARCHY_NVIDIA_PROC_VERSION="$nvidia_proc"
+export OMARCHY_NVIDIA_SYS_VERSION="$nvidia_sys"
 
 cat > "$nvidia_proc" <<'EOF'
 NVRM version: NVIDIA UNIX x86_64 Kernel Module  615.71.09  Wed Jan 28 17:15:20 UTC 2026
@@ -89,13 +91,22 @@ pass "matching nvidia-utils does not prompt for reboot"
 
 # 4. No loaded NVIDIA module does not offer reboot
 : > "$CALL_LOG"
-rm -f "$nvidia_proc"
+rm -f "$nvidia_proc" "$nvidia_sys"
 MOCK_NVIDIA_PKG="nvidia-utils" MOCK_NVIDIA_VER="615.78.08-1" \
   omarchy-update-restart --reboot-only > "$scratch/output" 2>&1
 ! grep -q 'prompt:' "$CALL_LOG" || fail "missing driver version must not offer reboot"
 pass "systems without a loaded NVIDIA driver do not prompt for reboot"
 
-# 5. Legacy 580xx utils mismatch offers reboot
+# 5. Sysfs module version fallback detects mismatch
+echo "615.71.09" > "$nvidia_sys"
+: > "$CALL_LOG"
+MOCK_NVIDIA_PKG="nvidia-utils" MOCK_NVIDIA_VER="615.78.08-1" \
+  omarchy-update-restart --reboot-only > "$scratch/output" 2>&1
+grep -Fxq 'prompt:confirm NVIDIA driver has been updated. Reboot?' "$CALL_LOG" || fail "sysfs driver mismatch offers reboot"
+pass "sysfs module version fallback offers a reboot"
+rm -f "$nvidia_sys"
+
+# 6. Legacy 580xx utils mismatch offers reboot
 cat > "$nvidia_proc" <<'EOF'
 NVRM version: NVIDIA UNIX x86_64 Kernel Module  580.80.00  Mon Aug 10 12:00:00 UTC 2026
 EOF
@@ -105,7 +116,7 @@ MOCK_NVIDIA_PKG="nvidia-580xx-utils" MOCK_NVIDIA_VER="580.82.07-1" \
 grep -Fxq 'prompt:confirm NVIDIA driver has been updated. Reboot?' "$CALL_LOG" || fail "580xx driver mismatch offers reboot"
 pass "mismatched nvidia-580xx-utils offers a reboot"
 
-# 6. Services-only mode never prompts for reboot
+# 7. Services-only mode never prompts for reboot
 : > "$CALL_LOG"
 MOCK_NVIDIA_PKG="nvidia-utils" MOCK_NVIDIA_VER="615.78.08-1" \
   omarchy-update-restart --services-only > "$scratch/output" 2>&1
