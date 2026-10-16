@@ -71,7 +71,10 @@ TMPDIR=$(mktemp -d)
 result="$TMPDIR/result.json"
 log="$TMPDIR/quickshell.log"
 config_dir="$TMPDIR/lock-unlock-state"
-mkdir -p "$config_dir" "$TMPDIR/home"
+mkdir -p "$config_dir" "$TMPDIR/home" "$TMPDIR/bin"
+# Unlocking runs the wake command; keep it off the desktop running the suite.
+printf '#!/bin/bash\n' >"$TMPDIR/bin/omarchy-system-wake"
+chmod +x "$TMPDIR/bin/omarchy-system-wake"
 cp "$SHELL_TEST_DIR/fixtures/lock-unlock-state/shell.qml" "$config_dir/shell.qml"
 ln -s "$ROOT/shell/Ui" "$config_dir/Ui"
 ln -s "$ROOT/shell/Commons" "$config_dir/Commons"
@@ -84,7 +87,7 @@ XDG_CACHE_HOME="$TMPDIR/home/.cache" \
 XDG_STATE_HOME="$TMPDIR/home/.local/state" \
 QML2_IMPORT_PATH="$ROOT/shell${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}" \
 QML_IMPORT_PATH="$ROOT/shell${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}" \
-PATH="$ROOT/bin:$PATH" \
+PATH="$TMPDIR/bin:$ROOT/bin:$PATH" \
   quickshell -p "$config_dir" --no-color >"$log" 2>&1 &
 QS_PID=$!
 
