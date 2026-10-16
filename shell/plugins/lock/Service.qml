@@ -19,6 +19,8 @@ Item {
   readonly property string currentBackgroundLink: stateHome + "/omarchy/current/background"
 
   property bool lockRequested: false
+  // Quickshell 0.3.2 never signals sessionLock.locked going false on unlock, so
+  // the drawn lock state follows this copy; decisions read the live value.
   property bool sessionLocked: false
   property bool pendingSessionLock: false
   property bool authenticatingPassword: false
@@ -63,7 +65,7 @@ Item {
   // notification once reported locked after an unlock, and a lock request before
   // suspend then took that for done and never locked the session.
   function currentlyLocked() {
-    return lockRequested || sessionLocked || sessionLock.secure
+    return lockRequested || sessionLock.locked || sessionLock.secure
   }
   readonly property bool authenticating: authenticatingPassword || fingerprintAuthenticating
   readonly property var batteryService: shell && shell.services ? shell.firstPartyServiceFor("omarchy.battery") : null
@@ -95,7 +97,7 @@ Item {
   }
 
   function requestSessionLock() {
-    if (!lockRequested || sessionLocked || sessionLock.locked || sessionLock.secure) return
+    if (!lockRequested || sessionLock.locked || sessionLock.secure) return
     if (sessionLockStabilizeTimer.running) return
 
     if (!hasRealScreen()) {
@@ -864,7 +866,7 @@ Item {
         locked: root.currentlyLocked(),
         requested: root.lockRequested,
         pending: root.pendingSessionLock,
-        sessionLocked: root.sessionLocked,
+        sessionLocked: sessionLock.locked,
         secure: sessionLock.secure,
         realScreens: root.realScreenCount(),
         passwordPam: root.passwordPamConfigured,

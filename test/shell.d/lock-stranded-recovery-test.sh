@@ -39,8 +39,8 @@ assert(
 // A locked binding that missed a change once read locked after an unlock, and
 // the lock before suspend took that for done. Decisions read the state afresh.
 assert(
-  /function currentlyLocked\(\) \{\s*return lockRequested \|\| sessionLocked \|\| sessionLock\.secure\s*\}/.test(serviceQml),
-  'the lock state is read from tracked sessionLocked and secure state, not a stale native property'
+  /function currentlyLocked\(\) \{\s*return lockRequested \|\| sessionLock\.locked \|\| sessionLock\.secure\s*\}/.test(serviceQml),
+  'the lock state is read from the session lock itself, not a cached binding'
 )
 assert(
   /function lock\(\): string \{[\s\S]*?if \(!root\.currentlyLocked\(\) && !root\.beginLock\(\)\) return "failed"/.test(serviceQml)
