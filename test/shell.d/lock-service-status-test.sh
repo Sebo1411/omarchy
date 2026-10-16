@@ -19,6 +19,11 @@ assert(
 )
 
 assert(
+  /function currentlyLocked\(\) \{\s*return lockRequested \|\| sessionLock\.locked \|\| sessionLock\.secure\s*\}/.test(serviceQml),
+  'lock decisions still read the live session lock, not the tracked copy'
+)
+
+assert(
   /function requestSessionLock\(\) \{[\s\S]*sessionLocked = true\s*\n\s*sessionLock\.locked = true/.test(serviceQml),
   'requesting the session lock marks sessionLocked true'
 )
@@ -34,8 +39,8 @@ assert(
 )
 
 assert(
-  /status\(\): string \{[\s\S]*sessionLocked: root\.sessionLocked/.test(serviceQml),
-  'status IPC reports root.sessionLocked so components and composite stay consistent'
+  /status\(\): string \{[\s\S]*sessionLocked: sessionLock\.locked,/.test(serviceQml),
+  'status IPC reports what Quickshell holds, not the tracked copy'
 )
 JS
 

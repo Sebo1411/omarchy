@@ -50,18 +50,24 @@ ShellRoot {
         check(initStatus.locked === false && initStatus.sessionLocked === false, "initial ipc status reports unlocked")
       }
 
-      // 2. Lock cycle 1
+      // The drawn state follows the tracked copy on its own.
+      service.sessionLocked = true
+      check(service.locked, "service.locked follows sessionLocked")
+      service.sessionLocked = false
+      check(!service.locked, "service.locked clears with sessionLocked")
+
+      // 2. Lock cycle 1. A granted lock is simulated, so the suite never takes
+      // the real session lock of the desktop it runs on.
       service.lockRequested = true
-      service.requestSessionLock()
+      service.sessionLocked = true
       check(service.locked, "service is locked when requested and session locked")
-      check(service.sessionLocked, "sessionLocked is true after requestSessionLock")
       if (lockIpc) {
         check(lockIpc.isLocked() === "true", "ipc isLocked returns true while locked")
         var lockedStatus = JSON.parse(lockIpc.status())
-        check(lockedStatus.locked === true && lockedStatus.sessionLocked === true, "ipc status reports locked")
+        check(lockedStatus.locked === true, "ipc status reports locked")
       }
 
-      // 3. Unlock cycle 1: simulate unlock (which does not emit native lockStateChanged)
+      // 3. Unlock cycle 1, with no lockStateChanged, as Quickshell 0.3.2 unlocks
       service.finishUnlock()
       check(!service.locked, "service.locked becomes false after finishUnlock without native lockStateChanged")
       check(!service.sessionLocked, "sessionLocked is false after finishUnlock")
@@ -74,9 +80,8 @@ ShellRoot {
 
       // 4. Lock cycle 2
       service.lockRequested = true
-      service.requestSessionLock()
+      service.sessionLocked = true
       check(service.locked, "second lock cycle marks service locked")
-      check(service.sessionLocked, "second lock cycle marks sessionLocked true")
       if (lockIpc) {
         check(lockIpc.isLocked() === "true", "second lock cycle ipc isLocked is true")
       }
