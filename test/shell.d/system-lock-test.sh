@@ -11,12 +11,19 @@ mock_bin="$tmpdir/bin"
 call_log="$tmpdir/calls"
 mkdir -p "$mock_bin"
 
-for command in hyprctl pkill timeout omarchy-notification-send; do
+for command in hyprctl pkill pidwait omarchy-notification-send; do
   cat >"$mock_bin/$command" <<'SH'
 #!/bin/bash
 printf '%s %s\n' "$(basename "$0")" "$*" >>"$CALL_LOG"
 SH
 done
+
+real_timeout=$(command -v timeout)
+cat >"$mock_bin/timeout" <<SH
+#!/bin/bash
+printf '%s %s\n' "\$(basename "\$0")" "\$*" >>"\$CALL_LOG"
+exec "$real_timeout" "\$@"
+SH
 
 cat >"$mock_bin/omarchy-shell" <<'SH'
 #!/bin/bash
@@ -120,3 +127,20 @@ fi
 grep -Fq "hyprctl notify 3 5000 rgb(ff5555) Session Unsecured: Lock service refused to lock the session." "$call_log" ||
   fail "system lock falls back to hyprctl notify when notification send fails"
 pass "system lock falls back to hyprctl notify when notification send fails"
+
+# Verify a stalled notification falls back promptly
+: >"$call_log"
+cat >"$mock_bin/omarchy-notification-send" <<'SH'
+#!/bin/bash
+exec sleep 30
+SH
+SECONDS=0
+if PATH="$mock_bin:$PATH" CALL_LOG="$call_log" MOCK_LOCK_REPLY=failed \
+  "$ROOT/bin/omarchy-system-lock" 2>/dev/null; then
+  fail "system lock should still fail when notification send stalls"
+fi
+(( SECONDS < 10 )) ||
+  fail "system lock bounds a stalled notification" "took ${SECONDS}s"
+grep -Fq "hyprctl notify 3 5000 rgb(ff5555) Session Unsecured: Lock service refused to lock the session." "$call_log" ||
+  fail "system lock falls back to hyprctl notify when notification send stalls"
+pass "system lock falls back promptly when notification send stalls"
