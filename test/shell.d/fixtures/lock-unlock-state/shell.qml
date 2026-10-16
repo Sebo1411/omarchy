@@ -39,6 +39,7 @@ ShellRoot {
       }
 
       var lockIpc = findLockIpc(service)
+      check(lockIpc !== null, "the lock IPC handler is found")
 
       // 1. Initial unlocked state
       check(!service.locked, "initial state is unlocked")
